@@ -1,14 +1,13 @@
 import PicoGL from 'picogl';
-// import vec3 from 'gl-vec3';
 import {vec3, vec2} from 'gl-matrix';
-
+import spector from 'spectorjs';
 import queryString from 'query-string';
 
 import {createCamera} from './camera';
 import scene from './scenes/test-scene';
 
 import vertShader from './shaders/vert.glsl';
-import raytraceShader from './shaders/raytracer.glsl.js';
+import rayTraceShader from './shaders/raytracer.glsl.js';
 import renderShader from './shaders/render.glsl';
 
 import {
@@ -25,8 +24,9 @@ import './styles/index.scss';
 const defaultMaxSampleCount = 10;
 
 function app() {
-    const canvas = document.getElementById('regl-canvas');
     const params = queryString.parse(location.search);
+    const canvas = document.getElementById('regl-canvas');
+    const gl = canvas.getContext('webgl2');
 
     const maxSampleCount = definedNotNull(params.sampleCount)
         ? params.sampleCount
@@ -36,7 +36,10 @@ function app() {
         ? params.sampleCount || 1
         : 1;
 
-    const gl = canvas.getContext('webgl2');
+    if(params.debug) {
+        let spectorGlDebug = new spector.Spector();
+        spectorGlDebug.displayUI();
+    }
 
     const app = PicoGL.createApp(canvas)
         .disable(PicoGL.DEPTH_TEST)
@@ -77,15 +80,14 @@ function app() {
      * raytrace draw call
      */
 
-    const rayTraceShaderSrc = raytraceShader({
+    const rayTraceGlProgram = app.createProgram(vertShader, rayTraceShader({
         options: {
             realTime: params.realTime,
             glslCamera: false,
             numSamples: shaderSampleCount
         },
         objectList: scene
-    });
-    const rayTraceGlProgram = app.createProgram(vertShader, rayTraceShaderSrc);
+    }));
 
     // full screen quad
     const positions = app.createVertexBuffer(PicoGL.FLOAT, 2,
@@ -117,9 +119,10 @@ function app() {
     }
 
     const cameraUniform = camera.getUniform();
-    Object.keys(cameraUniform).forEach(uniformName =>
-        rayTraceDrawCall.uniform(uniformName, cameraUniform[uniformName])
-    );
+    Object.keys(cameraUniform)
+        .forEach(uniformName =>
+            rayTraceDrawCall.uniform(uniformName, cameraUniform[uniformName])
+        );
 
     /*
      * render draw call
@@ -131,10 +134,7 @@ function app() {
         .texture('traceTexture', traceFbo.colorAttachments[0]);
 
 
-    // var SPECTOR = require("spectorjs");
-    // var spector = new SPECTOR.Spector();
-    // spector.displayUI();
-
+    // debug info
     let debugEl = document.getElementById('debug');
 
     const staticRender = () => {
@@ -150,7 +150,8 @@ function app() {
                 frame.cancel();
             }
 
-            // draw new sample blended with accumulated samples to traceFbo frambuffer
+            // draw new rendered sample blended with accumulated
+            // samples in accumFbo to traceFbo frambuffer
 
             app.drawFramebuffer(traceFbo)
                 .clear();
@@ -161,6 +162,7 @@ function app() {
                 .draw();
 
             // copy rendered result in traceFbo to accumFbo frambuffer
+            // for blending in the next raytrace draw call
 
             app.readFramebuffer(traceFbo)
                 .drawFramebuffer(accumFbo)
