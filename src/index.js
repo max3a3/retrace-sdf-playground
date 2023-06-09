@@ -39,10 +39,9 @@ function app() {
     const gl = canvas.getContext('webgl2');
 
     const app = PicoGL.createApp(canvas)
-        .noDepthTest()
-        .noStencilTest()
-        .noScissorTest()
-        .floatRenderTargets() // enable EXT_color_buffer_float extension
+        .disable(PicoGL.DEPTH_TEST)
+        .disable(PicoGL.STENCIL_TEST)
+        .disable(PicoGL.SCISSOR_TEST)
         .clearColor(0, 0, 0, 1);
 
     const camera = createCamera({
@@ -86,7 +85,6 @@ function app() {
         },
         objectList: scene
     });
-
     const rayTraceGlProgram = app.createProgram(vertShader, rayTraceShaderSrc);
 
     // full screen quad
@@ -112,7 +110,7 @@ function app() {
         ]))
         .uniform('uResolution', vec2.fromValues(app.width, app.height))
         .uniform('uSeed', vec2.fromValues(random(), random()))
-        .uniform('uTime', 0);
+      //  .uniform('uTime', 0);
 
     if(!params.realTime) {
         rayTraceDrawCall
@@ -164,7 +162,7 @@ function app() {
                 .clear();
 
             rayTraceDrawCall
-                .uniform('uTime', time * 0.01)
+            //    .uniform('uTime', time * 0.01)
                 .uniform('uSeed', vec2.fromValues(random(), random()))
                 .draw();
 
@@ -192,7 +190,7 @@ function app() {
             app.clear();
 
             rayTraceDrawCall
-                .uniform('uTime', time * 0.01)
+           //     .uniform('uTime', time * 0.01)
                 .uniform('uSeed', vec2.fromValues(random(), random()))
                 .draw();
 
